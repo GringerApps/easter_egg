@@ -1,0 +1,27 @@
+{
+  "uuid": "af17d926-a370-447d-b4a7-759c3994d604",
+  "shortName": "Easter Egg",
+  "longName": "Easter Egg",
+  "companyName": "Gringer Apps",
+  "versionLabel": "0.1",
+  "sdkVersion": "3",
+  "targetPlatforms": ["basalt", "chalk"],
+  "watchapp": {
+    "watchface": true
+  },
+  "resources": {
+    "media": [
+      {
+        "file": "images/egg_4.png",
+        "name": "EGG_4",
+        "type": "raw"
+      },
+      {
+        "file": "images/img_menu.png",
+        "menuIcon": true,
+        "name": "IMG_MENU",
+        "type": "png"
+      }
+    ]
+  }
+}
