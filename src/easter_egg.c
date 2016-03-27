@@ -14,7 +14,6 @@ const uint32_t SEQUENCES[3] = {
 };
 const uint32_t FIRST_DELAY_MS = 10;
 #define BITMAP_SIZE GSize(111,132)
-const int TEXT_HEIGHT = 50;
 
 static Window *s_main_window;
 static TextLayer *s_time_layer;
@@ -93,7 +92,8 @@ static void main_window_load(Window *window) {
   bitmap_layer_set_alignment(s_bitmap_layer, GAlignCenter);
   layer_add_child(window_layer, bitmap_layer_get_layer(s_bitmap_layer));
 
-  s_time_layer = text_layer_create(GRect(0, window_size.h - TEXT_HEIGHT, window_size.w, TEXT_HEIGHT));
+  const int text_height = window_size.h - BITMAP_SIZE.h;
+  s_time_layer = text_layer_create(GRect(0, window_size.h - text_height, window_size.w, text_height));
   text_layer_set_background_color(s_time_layer, GColorImperialPurple);
   text_layer_set_text_color(s_time_layer, GColorWhite);
   text_layer_set_font(s_time_layer, fonts_get_system_font(FONT_KEY_BITHAM_30_BLACK));
