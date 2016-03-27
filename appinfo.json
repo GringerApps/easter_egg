@@ -17,6 +17,11 @@
         "type": "png"
       },
       {
+        "file": "images/egg_1.png",
+        "name": "EGG_1",
+        "type": "raw"
+      },
+      {
         "file": "images/egg_2.png",
         "name": "EGG_2",
         "type": "raw"

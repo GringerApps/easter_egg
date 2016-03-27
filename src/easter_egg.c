@@ -7,10 +7,12 @@ typedef struct GifContext{
   bool on_shake;
 } GifContext;
 
-const uint32_t SEQUENCES[3] = {
+#define SEQUENCES_COUNT 4
+const uint32_t SEQUENCES[SEQUENCES_COUNT] = {
+  RESOURCE_ID_EGG_1,
   RESOURCE_ID_EGG_2,
   RESOURCE_ID_EGG_3,
-  RESOURCE_ID_EGG_4,
+  RESOURCE_ID_EGG_4
 };
 static const uint32_t FIRST_DELAY_MS = 10;
 static const uint32_t MIN_TAP_EASTER_EGG = 10;
@@ -19,7 +21,7 @@ static const uint32_t EASTER_EGG_TIMEOUT = 5000;
 static GifContext SHAKE_GIF_CONTEXT = { .enlighten = false, .on_shake = true };
 static GifContext TICK_GIF_CONTEXT = { .enlighten = true, .on_shake = false };
 static GifContext INIT_GIF_CONTEXT = { .enlighten = true, .on_shake = false };
-static const GSize BITMAP_SIZE = { .w = 111, .h = 132 };
+static const GSize BITMAP_SIZE = { .w = PBL_IF_ROUND_ELSE(180, 144), .h = 132 };
 
 static Window *s_main_window;
 static TextLayer *s_time_layer;
@@ -65,9 +67,9 @@ static void try_play_gif(void *context) {
     if(gif_context->enlighten){
       light_enable_interaction();
     }
-    uint32_t sequence_idx = 2;
+    uint32_t sequence_idx = SEQUENCES_COUNT - 1;
     if(gif_context->on_shake){
-      sequence_idx = rand() % 3;
+      sequence_idx = rand() % SEQUENCES_COUNT;
     }
     s_sequence = gbitmap_sequence_create_with_resource(SEQUENCES[sequence_idx]);
     gbitmap_sequence_set_play_count(s_sequence, 1);
