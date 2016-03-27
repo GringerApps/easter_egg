@@ -3,7 +3,7 @@
   "shortName": "Easter Egg",
   "longName": "Easter Egg",
   "companyName": "Gringer Apps",
-  "versionLabel": "0.3",
+  "versionLabel": "0.4",
   "sdkVersion": "3",
   "targetPlatforms": ["basalt", "chalk"],
   "watchapp": {
