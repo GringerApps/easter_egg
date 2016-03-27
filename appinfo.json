@@ -12,6 +12,11 @@
   "resources": {
     "media": [
       {
+        "file": "images/easter_egg.png",
+        "name": "EASTER_EGG",
+        "type": "png"
+      },
+      {
         "file": "images/egg_2.png",
         "name": "EGG_2",
         "type": "raw"

@@ -13,15 +13,27 @@ const uint32_t SEQUENCES[3] = {
   RESOURCE_ID_EGG_4,
 };
 const uint32_t FIRST_DELAY_MS = 10;
+const uint32_t MIN_TAP_EASTER_EGG = 10;
+const uint32_t MAX_TAP_EASTER_EGG = 15;
+const uint32_t EASTER_EGG_TIMEOUT = 5000;
 #define BITMAP_SIZE GSize(111,132)
 
 static Window *s_main_window;
 static TextLayer *s_time_layer;
 static GBitmap *s_bitmap;
+static GBitmap *s_easter_egg_bitmap;
 static BitmapLayer *s_bitmap_layer;
+static uint32_t s_tap_count;
+static AppTimer *s_tap_timer;
+static bool s_easter_egg_active;
+static uint32_t next_delay;
+static bool playing = false;
 
-uint32_t next_delay;
-bool playing = false;
+static void reset_gif_to_default(){
+  GBitmapSequence * sequence = gbitmap_sequence_create_with_resource(RESOURCE_ID_EGG_4);
+  gbitmap_sequence_update_bitmap_next_frame(sequence, s_bitmap, &next_delay);
+  gbitmap_sequence_destroy(sequence);
+}
 
 static void reset_gif(GBitmapSequence * sequence){
   gbitmap_sequence_restart(sequence);
@@ -31,7 +43,7 @@ static void reset_gif(GBitmapSequence * sequence){
 
 static void play_gif(void *context){
   GBitmapSequence * sequence = (GBitmapSequence*) context;
-  if(gbitmap_sequence_update_bitmap_next_frame(sequence, s_bitmap, &next_delay)) {
+  if(gbitmap_sequence_update_bitmap_next_frame(sequence, s_bitmap, &next_delay) && !s_easter_egg_active) {
     bitmap_layer_set_bitmap(s_bitmap_layer, s_bitmap);
     layer_mark_dirty(bitmap_layer_get_layer(s_bitmap_layer));
     app_timer_register(next_delay, play_gif, sequence);
@@ -58,7 +70,33 @@ static void try_play_gif(void *context) {
   }
 }
 
+static void reset_tap_timer(void * context){
+  s_tap_timer = NULL;
+  s_tap_count = 0;
+}
+
 static void accel_tap_handler(AccelAxisType axis, int32_t direction) {
+  if(s_tap_count >= MIN_TAP_EASTER_EGG && s_tap_count < MAX_TAP_EASTER_EGG) {
+    if(s_tap_timer){
+      app_timer_cancel(s_tap_timer);
+      s_tap_timer = NULL;
+    }
+    if(!s_easter_egg_active){
+      s_easter_egg_active = true;
+      bitmap_layer_set_alignment(s_bitmap_layer, GAlignBottom);
+      bitmap_layer_set_bitmap(s_bitmap_layer, s_easter_egg_bitmap);
+    }
+  }else if(s_tap_count >= MAX_TAP_EASTER_EGG){
+    s_easter_egg_active = false;
+    s_tap_count = 0;
+    bitmap_layer_set_alignment(s_bitmap_layer, GAlignCenter);
+    reset_gif_to_default();
+  }else if(s_tap_count < MIN_TAP_EASTER_EGG){
+    if(s_tap_timer == NULL || s_tap_count == 0 || !app_timer_reschedule(s_tap_timer, EASTER_EGG_TIMEOUT)){
+      s_tap_timer = app_timer_register(EASTER_EGG_TIMEOUT, reset_tap_timer, NULL);
+    }
+  }
+  s_tap_count++;
   GifContext context = (GifContext) { .enlighten = false, .on_shake = true };
   app_timer_register(FIRST_DELAY_MS, try_play_gif, &context);
 }
@@ -108,11 +146,12 @@ static void main_window_unload(Window *window) {
 
 static void init() {
   srand(time(NULL));
+  s_tap_count = 0;
+  s_tap_timer = NULL;
+  s_easter_egg_active = false;
+  s_easter_egg_bitmap = gbitmap_create_with_resource(RESOURCE_ID_EASTER_EGG);
 
   s_bitmap = gbitmap_create_blank(BITMAP_SIZE, GBitmapFormat8Bit);
-  GBitmapSequence * sequence = gbitmap_sequence_create_with_resource(RESOURCE_ID_EGG_4);
-  gbitmap_sequence_update_bitmap_next_frame(sequence, s_bitmap, &next_delay);
-  gbitmap_sequence_destroy(sequence);
 
   s_main_window = window_create();
   window_set_background_color(s_main_window, GColorImperialPurple);
@@ -135,6 +174,7 @@ static void deinit() {
   tick_timer_service_unsubscribe();
   window_destroy(s_main_window);
   gbitmap_destroy(s_bitmap);
+  gbitmap_destroy(s_easter_egg_bitmap);
 }
 
 int main(void) {
