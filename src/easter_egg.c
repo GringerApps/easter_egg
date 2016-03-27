@@ -2,7 +2,7 @@
 
 #define d(string, ...) APP_LOG (APP_LOG_LEVEL_DEBUG, string, ##__VA_ARGS__)
 
-typedef struct {
+typedef struct GifContext{
   bool enlighten;
   bool on_shake;
 } GifContext;
@@ -12,11 +12,14 @@ const uint32_t SEQUENCES[3] = {
   RESOURCE_ID_EGG_3,
   RESOURCE_ID_EGG_4,
 };
-const uint32_t FIRST_DELAY_MS = 10;
-const uint32_t MIN_TAP_EASTER_EGG = 10;
-const uint32_t MAX_TAP_EASTER_EGG = 15;
-const uint32_t EASTER_EGG_TIMEOUT = 5000;
-#define BITMAP_SIZE GSize(111,132)
+static const uint32_t FIRST_DELAY_MS = 10;
+static const uint32_t MIN_TAP_EASTER_EGG = 10;
+static const uint32_t MAX_TAP_EASTER_EGG = 15;
+static const uint32_t EASTER_EGG_TIMEOUT = 5000;
+static GifContext SHAKE_GIF_CONTEXT = { .enlighten = false, .on_shake = true };
+static GifContext TICK_GIF_CONTEXT = { .enlighten = true, .on_shake = false };
+static GifContext INIT_GIF_CONTEXT = { .enlighten = true, .on_shake = false };
+static const GSize BITMAP_SIZE = { .w = 111, .h = 132 };
 
 static Window *s_main_window;
 static TextLayer *s_time_layer;
@@ -26,47 +29,49 @@ static BitmapLayer *s_bitmap_layer;
 static uint32_t s_tap_count;
 static AppTimer *s_tap_timer;
 static bool s_easter_egg_active;
-static uint32_t next_delay;
-static bool playing = false;
+static uint32_t s_next_delay;
+static bool s_playing = false;
+static GBitmapSequence * s_sequence;
 
 static void reset_gif_to_default(){
-  GBitmapSequence * sequence = gbitmap_sequence_create_with_resource(RESOURCE_ID_EGG_4);
-  gbitmap_sequence_update_bitmap_next_frame(sequence, s_bitmap, &next_delay);
-  gbitmap_sequence_destroy(sequence);
+  s_sequence = gbitmap_sequence_create_with_resource(RESOURCE_ID_EGG_4);
+  gbitmap_sequence_update_bitmap_next_frame(s_sequence, s_bitmap, &s_next_delay);
+  gbitmap_sequence_destroy(s_sequence);
+  s_sequence = NULL;
 }
 
-static void reset_gif(GBitmapSequence * sequence){
-  gbitmap_sequence_restart(sequence);
+static void reset_gif(){
+  gbitmap_sequence_restart(s_sequence);
   layer_mark_dirty(bitmap_layer_get_layer(s_bitmap_layer));
-  gbitmap_sequence_destroy(sequence);
+  gbitmap_sequence_destroy(s_sequence);
+  s_sequence = NULL;
 }
 
 static void play_gif(void *context){
-  GBitmapSequence * sequence = (GBitmapSequence*) context;
-  if(gbitmap_sequence_update_bitmap_next_frame(sequence, s_bitmap, &next_delay) && !s_easter_egg_active) {
+  if(gbitmap_sequence_update_bitmap_next_frame(s_sequence, s_bitmap, &s_next_delay) && !s_easter_egg_active) {
     bitmap_layer_set_bitmap(s_bitmap_layer, s_bitmap);
     layer_mark_dirty(bitmap_layer_get_layer(s_bitmap_layer));
-    app_timer_register(next_delay, play_gif, sequence);
+    app_timer_register(s_next_delay, play_gif, NULL);
   }else{
-    reset_gif(sequence);
-    playing = false;
+    reset_gif();
+    s_playing = false;
   }
 }
 
 static void try_play_gif(void *context) {
-  GifContext * gif_context  = (GifContext *) context;
-  if(!playing){
-    playing = true;
+  GifContext * gif_context = (GifContext *) context;
+  if(!s_playing){
+    s_playing = true;
     if(gif_context->enlighten){
       light_enable_interaction();
     }
-    int sequence_idx = 2;
+    uint32_t sequence_idx = 2;
     if(gif_context->on_shake){
       sequence_idx = rand() % 3;
     }
-    GBitmapSequence * sequence = gbitmap_sequence_create_with_resource(SEQUENCES[sequence_idx]);
-    gbitmap_sequence_set_play_count(sequence, 1);
-    play_gif(sequence);
+    s_sequence = gbitmap_sequence_create_with_resource(SEQUENCES[sequence_idx]);
+    gbitmap_sequence_set_play_count(s_sequence, 1);
+    play_gif(NULL);
   }
 }
 
@@ -97,8 +102,7 @@ static void accel_tap_handler(AccelAxisType axis, int32_t direction) {
     }
   }
   s_tap_count++;
-  GifContext context = (GifContext) { .enlighten = false, .on_shake = true };
-  app_timer_register(FIRST_DELAY_MS, try_play_gif, &context);
+  app_timer_register(FIRST_DELAY_MS, try_play_gif, &SHAKE_GIF_CONTEXT);
 }
 
 static void update_time(const bool play_gif) {
@@ -108,8 +112,7 @@ static void update_time(const bool play_gif) {
   strftime(s_buffer, sizeof(s_buffer), clock_is_24h_style() ? "%H:%M" : "%I:%M", tick_time);
   text_layer_set_text(s_time_layer, s_buffer);
   if(tick_time->tm_min % 5 == 0 && play_gif){
-    GifContext context = (GifContext) { .enlighten = true, .on_shake = false };
-    app_timer_register(FIRST_DELAY_MS, try_play_gif, &context);
+    app_timer_register(FIRST_DELAY_MS, try_play_gif, &TICK_GIF_CONTEXT);
   }
 }
 
@@ -162,14 +165,16 @@ static void init() {
   window_stack_push(s_main_window, true);
 
   update_time(false);
-  GifContext context = (GifContext) { .enlighten = true, .on_shake = false };
-  app_timer_register(FIRST_DELAY_MS, try_play_gif, &context);
+  app_timer_register(FIRST_DELAY_MS, try_play_gif, &INIT_GIF_CONTEXT);
   tick_timer_service_subscribe(MINUTE_UNIT, tick_handler);
   accel_service_set_sampling_rate(ACCEL_SAMPLING_10HZ);
   accel_tap_service_subscribe(accel_tap_handler);
 }
 
 static void deinit() {
+  if(s_sequence != NULL){
+    gbitmap_sequence_destroy(s_sequence);
+  }
   accel_tap_service_unsubscribe();
   tick_timer_service_unsubscribe();
   window_destroy(s_main_window);
