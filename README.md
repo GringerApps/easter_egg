@@ -1,6 +1,8 @@
 # Easter Egg
 Celebrate Easter with this cute animated watchface (and some chocolate). Shake your wrist to wake up the little chick inside the egg. And… will you be able to find the hidden Easter egg?
 
+Go and grab it [here](https://apps.getpebble.com/en_US/application/56f6fa4191445b2baf000015).
+
 Designed by [@AlessioLaiso](https://twitter.com/AlessioLaiso). Animated by [richkam.com](http://www.richkam.com/).
 
 ## Previews
